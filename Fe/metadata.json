@@ -1,0 +1,9 @@
+{
+  "name": "The Atelier - Luxury Hotel Management System",
+  "description": "A comprehensive hotel management suite featuring a high-end guest booking experience and a sophisticated staff dashboard for housekeeping, reception, and administration.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
