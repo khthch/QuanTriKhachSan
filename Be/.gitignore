@@ -1,0 +1,45 @@
+# Build output
+bin/
+obj/
+**/[Dd]ebug/
+**/[Rr]elease/
+
+# Visual Studio workspace
+.vs/
+
+# User-specific files
+*.user
+*.rsuser
+*.suo
+
+# Logs
+*.log
+logs/
+
+# Test results
+TestResults/
+*.trx
+
+# Rider / ReSharper
+.idea/
+_ReSharper*/
+*.DotSettings.user
+
+# VS Code local settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# Local secrets/config overrides
+appsettings.Development.json
+appsettings.Local.json
+
+# EF Core local scripts
+*.sql

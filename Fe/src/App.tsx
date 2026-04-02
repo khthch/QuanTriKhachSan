@@ -10,6 +10,32 @@ import { ReceptionPage } from './pages/ReceptionPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AmenitiesPage } from './pages/AmenitiesPage';
 import { AboutPage } from './pages/AboutPage';
+import { getUser } from './lib/auth';
+
+function RequireAuth({ children }: { children: React.ReactElement }) {
+  const user = getUser();
+  if (!user) {
+    return <Navigate to="/dashboard/settings" replace />;
+  }
+  return children;
+}
+
+function RoleRoute({
+  children,
+  allow,
+}: {
+  children: React.ReactElement;
+  allow: string[];
+}) {
+  const user = getUser();
+  if (!user) {
+    return <Navigate to="/dashboard/settings" replace />;
+  }
+  if (!allow.includes(user.role)) {
+    return <Navigate to="/dashboard/status" replace />;
+  }
+  return children;
+}
 
 export default function App() {
   return (
@@ -21,10 +47,38 @@ export default function App() {
       </Route>
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<Navigate to="/dashboard/status" replace />} />
-        <Route path="status" element={<RoomStatusPage />} />
-        <Route path="bookings" element={<BookingsPage />} />
-        <Route path="housekeeping" element={<HousekeepingPage />} />
-        <Route path="reception" element={<ReceptionPage />} />
+        <Route
+          path="status"
+          element={
+            <RequireAuth>
+              <RoomStatusPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="bookings"
+          element={
+            <RequireAuth>
+              <BookingsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="housekeeping"
+          element={
+            <RoleRoute allow={["Housekeeping", "Admin"]}>
+              <HousekeepingPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="reception"
+          element={
+            <RoleRoute allow={["Reception", "Admin"]}>
+              <ReceptionPage />
+            </RoleRoute>
+          }
+        />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

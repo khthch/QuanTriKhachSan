@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Wifi, 
   Wind, 
@@ -14,8 +15,41 @@ import {
 } from 'lucide-react';
 import { ROOMS } from '../constants';
 import { cn } from '../lib/utils';
+import { login, register } from '../lib/api';
+import { clearAuth, getUser, setToken, setUser } from '../lib/auth';
 
 export function LandingPage() {
+  const navigate = useNavigate();
+  const [showAuthModal, setShowAuthModal] = React.useState(false);
+  const [authMode, setAuthMode] = React.useState<'login' | 'register'>('login');
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [fullName, setFullName] = React.useState('');
+  const [phone, setPhone] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [authError, setAuthError] = React.useState('');
+  const [currentUser, setCurrentUser] = React.useState(() => getUser());
+
+  async function handleAuthSubmit() {
+    setIsLoading(true);
+    setAuthError('');
+    try {
+      const result = authMode === 'login'
+        ? await login({ email, password })
+        : await register({ fullName, email, password, phone });
+
+      setToken(result.token);
+      setUser(result.user);
+      setCurrentUser(result.user);
+      setShowAuthModal(false);
+      navigate('/dashboard/status');
+    } catch (error: any) {
+      setAuthError(error?.message || 'Xác thực thất bại');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-surface selection:bg-secondary-container">
       <main>
@@ -37,6 +71,51 @@ export function LandingPage() {
           >
             <h1 className="font-serif text-5xl md:text-7xl text-white mb-4 tracking-tight">Thánh Đường Tinh Tế</h1>
             <p className="font-sans text-white/80 text-lg tracking-widest uppercase mb-10">Trải nghiệm Nghệ thuật Sống</p>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+              {currentUser ? (
+                <>
+                  <button
+                    onClick={() => navigate('/dashboard/status')}
+                    className="bg-primary text-white px-6 py-3 rounded-sm font-bold tracking-widest uppercase text-xs hover:opacity-90 transition-opacity"
+                  >
+                    Vào dashboard
+                  </button>
+                  <button
+                    onClick={() => {
+                      clearAuth();
+                      setCurrentUser(null);
+                    }}
+                    className="bg-white/90 text-slate-900 px-6 py-3 rounded-sm font-bold tracking-widest uppercase text-xs hover:bg-white transition-colors"
+                  >
+                    Đăng xuất
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setAuthMode('login');
+                      setAuthError('');
+                      setShowAuthModal(true);
+                    }}
+                    className="bg-primary text-white px-6 py-3 rounded-sm font-bold tracking-widest uppercase text-xs hover:opacity-90 transition-opacity"
+                  >
+                    Đăng nhập
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAuthMode('register');
+                      setAuthError('');
+                      setShowAuthModal(true);
+                    }}
+                    className="bg-white/90 text-slate-900 px-6 py-3 rounded-sm font-bold tracking-widest uppercase text-xs hover:bg-white transition-colors"
+                  >
+                    Đăng ký
+                  </button>
+                </>
+              )}
+            </div>
             
             {/* Search Bar */}
             <div className="bg-white/95 backdrop-blur shadow-2xl p-2 md:p-4 rounded-sm flex flex-col md:flex-row items-stretch gap-2 max-w-4xl mx-auto">
@@ -170,28 +249,28 @@ export function LandingPage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="block text-[10px] font-bold tracking-widest uppercase text-slate-400">Nhận phòng</span>
-                    <span className="font-medium text-primary">12 Th12, 2024</span>
+                    <span className="font-medium text-primary">0</span>
                   </div>
                   <div className="text-right">
                     <span className="block text-[10px] font-bold tracking-widest uppercase text-slate-400">Trả phòng</span>
-                    <span className="font-medium text-primary">15 Th12, 2024</span>
+                    <span className="font-medium text-primary">0</span>
                   </div>
                 </div>
                 
                 <div className="py-4 border-y border-slate-200/10">
                   <div className="flex justify-between mb-3">
-                    <span className="text-sm text-on-surface-variant">Deluxe Heritage (3 đêm)</span>
-                    <span className="text-sm font-medium">$1,260</span>
+                    <span className="text-sm text-on-surface-variant">Chưa chọn phòng</span>
+                    <span className="text-sm font-medium">0</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-on-surface-variant">Thuế & Phí</span>
-                    <span className="text-sm font-medium">$124</span>
+                    <span className="text-sm font-medium">0</span>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center pt-2">
                   <span className="font-serif text-lg tracking-tighter">Tổng cộng dự kiến</span>
-                  <span className="font-serif text-2xl text-secondary">$1,384</span>
+                  <span className="font-serif text-2xl text-secondary">0</span>
                 </div>
               </div>
               
@@ -199,12 +278,71 @@ export function LandingPage() {
                 Tiến hành thanh toán
               </button>
               <p className="text-[10px] text-center mt-6 text-slate-400 font-medium tracking-widest leading-relaxed uppercase">
-                Hủy phòng miễn phí cho đến <br/>10 Th12, 2024
+                Hủy phòng miễn phí cho đến <br/>0
               </p>
             </div>
           </aside>
         </div>
       </main>
+
+      {showAuthModal && (
+        <div className="fixed inset-0 z-[100] bg-black/50 px-4 flex items-center justify-center" onClick={() => setShowAuthModal(false)}>
+          <div className="w-full max-w-lg bg-white rounded-2xl p-6 md:p-8" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-serif text-2xl text-slate-900">{authMode === 'login' ? 'Đăng nhập' : 'Đăng ký tài khoản'}</h3>
+              <button className="text-slate-500 hover:text-slate-900 text-sm font-bold" onClick={() => setShowAuthModal(false)}>Đóng</button>
+            </div>
+
+            <div className="inline-flex bg-slate-100 rounded-xl p-1 mb-5">
+              <button
+                onClick={() => setAuthMode('login')}
+                className={cn('px-4 py-2 rounded-lg text-sm font-bold', authMode === 'login' ? 'bg-white text-primary shadow-sm' : 'text-slate-500')}
+              >
+                Đăng nhập
+              </button>
+              <button
+                onClick={() => setAuthMode('register')}
+                className={cn('px-4 py-2 rounded-lg text-sm font-bold', authMode === 'register' ? 'bg-white text-primary shadow-sm' : 'text-slate-500')}
+              >
+                Đăng ký
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {authMode === 'register' && (
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Họ tên</label>
+                  <input value={fullName} onChange={(e) => setFullName(e.target.value)} type="text" className="w-full mt-1 p-2.5 border border-slate-200 rounded-lg" placeholder="Nguyễn Văn A" />
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Email</label>
+                <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="w-full mt-1 p-2.5 border border-slate-200 rounded-lg" placeholder="guest@hotel.com" />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Mật khẩu</label>
+                <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="w-full mt-1 p-2.5 border border-slate-200 rounded-lg" placeholder="Guest@123" />
+              </div>
+              {authMode === 'register' && (
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Số điện thoại</label>
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} type="text" className="w-full mt-1 p-2.5 border border-slate-200 rounded-lg" placeholder="0901234567" />
+                </div>
+              )}
+            </div>
+
+            {authError && <p className="text-sm text-red-500 mt-4">{authError}</p>}
+
+            <button
+              onClick={handleAuthSubmit}
+              disabled={isLoading}
+              className="w-full mt-6 bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-dim disabled:opacity-60"
+            >
+              {isLoading ? 'Đang xử lý...' : authMode === 'login' ? 'Đăng nhập' : 'Đăng ký & Đăng nhập'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

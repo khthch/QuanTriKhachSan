@@ -10,18 +10,43 @@ import {
   Info,
   Plus
 } from 'lucide-react';
-import { ROOMS } from '../constants';
 import { cn } from '../lib/utils';
 import { PageHeader } from '../components/dashboard/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { Pagination } from '../components/ui/Pagination';
+import { completeHousekeepingTask, getHousekeepingTasks } from '../lib/api';
 
 export function HousekeepingPage() {
+  const [tasks, setTasks] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(false);
+
+  const loadTasks = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getHousekeepingTasks();
+      setTasks(Array.isArray(data) ? data : []);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
+
+  async function handleComplete(roomId: number) {
+    await completeHousekeepingTask(roomId);
+    await loadTasks();
+  }
+
+  const toClean = tasks.filter((t) => t.status === 'Cleaning').length;
+  const urgent = tasks.filter((t) => t.status === 'Maintenance').length;
+
   const stats = [
-    { label: 'To Clean', value: 24, icon: WashingMachine, color: 'text-primary', bg: 'bg-primary-container' },
-    { label: 'In Progress', value: 8, icon: RefreshCw, color: 'text-secondary', bg: 'bg-secondary-container' },
-    { label: 'Completed', value: 42, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Urgent', value: 3, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50' },
+    { label: 'To Clean', value: toClean, icon: WashingMachine, color: 'text-primary', bg: 'bg-primary-container' },
+    { label: 'In Progress', value: 0, icon: RefreshCw, color: 'text-secondary', bg: 'bg-secondary-container' },
+    { label: 'Completed', value: 0, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Urgent', value: urgent, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50' },
   ];
 
   return (
@@ -64,58 +89,59 @@ export function HousekeepingPage() {
         </div>
 
         <div className="divide-y divide-slate-100">
-          {ROOMS.slice(0, 4).map((room) => (
+          {tasks.slice(0, 8).map((room) => (
             <div key={room.id} className="grid grid-cols-12 px-8 py-6 items-center hover:bg-slate-50 transition-colors group">
               <div className="col-span-1">
                 <input type="checkbox" className="rounded border-slate-300 text-primary focus:ring-primary h-5 w-5 cursor-pointer" />
               </div>
               <div className="col-span-2">
                 <div className="flex flex-col">
-                  <span className="text-lg font-bold text-slate-900 font-headline leading-none">{room.number}</span>
-                  <span className="text-xs text-slate-400 mt-1 font-medium">{room.type}</span>
+                  <span className="text-lg font-bold text-slate-900 font-headline leading-none">{room.roomNumber}</span>
+                  <span className="text-xs text-slate-400 mt-1 font-medium">Tầng {room.floorNumber}</span>
                 </div>
               </div>
               <div className="col-span-3">
                 <div className="flex items-center gap-3">
-                  {room.priority && (
-                    <span className={cn(
-                      "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-tight flex items-center gap-1",
-                      room.priority === 'urgent' ? "bg-red-50 text-red-500" : "bg-amber-50 text-amber-600"
-                    )}>
-                      <Zap className="w-3 h-3" /> Priority: {room.priority}
-                    </span>
-                  )}
+                  <span className={cn(
+                    "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-tight flex items-center gap-1",
+                    room.status === 'Maintenance' ? "bg-red-50 text-red-500" : "bg-amber-50 text-amber-600"
+                  )}>
+                    <Zap className="w-3 h-3" /> {room.status}
+                  </span>
                   <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                    {room.status === 'occupied' ? <UserCheck className="w-3.5 h-3.5" /> : <LogOut className="w-3.5 h-3.5" />}
-                    {room.status === 'occupied' ? 'Khách ở tiếp' : 'Trả phòng'}
+                    {room.status === 'Maintenance' ? <UserCheck className="w-3.5 h-3.5" /> : <LogOut className="w-3.5 h-3.5" />}
+                    {room.status === 'Maintenance' ? 'Bảo trì' : 'Dọn phòng'}
                   </span>
                 </div>
               </div>
               <div className="col-span-2">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-full bg-slate-200 overflow-hidden">
-                    <img src={`https://i.pravatar.cc/150?u=${room.assignedStaff || 'staff'}`} alt="Staff" className="w-full h-full object-cover" />
+                    <img src={`https://i.pravatar.cc/150?u=${room.id || 'staff'}`} alt="Staff" className="w-full h-full object-cover" />
                   </div>
-                  <span className="text-sm font-semibold text-slate-900">{room.assignedStaff || 'Chưa gán'}</span>
+                  <span className="text-sm font-semibold text-slate-900">Nhân viên ca</span>
                 </div>
               </div>
               <div className="col-span-2">
-                <span className="text-sm text-slate-400 font-medium">{room.lastUpdated || 'Chưa bắt đầu'}</span>
+                <span className="text-sm text-slate-400 font-medium">{room.updatedAt ? new Date(room.updatedAt).toLocaleString('vi-VN') : 'Chưa cập nhật'}</span>
               </div>
               <div className="col-span-2 text-right">
-                <button className="bg-primary hover:bg-primary-dim text-white px-5 py-2 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform">
+                <button onClick={() => handleComplete(Number(room.id))} className="bg-primary hover:bg-primary-dim text-white px-5 py-2 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform">
                   Hoàn tất
                 </button>
               </div>
             </div>
           ))}
+          {!loading && tasks.length === 0 && (
+            <div className="px-8 py-10 text-sm text-slate-500">Không có phòng cần dọn hoặc bảo trì.</div>
+          )}
         </div>
 
         <Pagination 
           currentPage={1} 
-          totalPages={6} 
-          totalItems={24} 
-          itemsPerPage={4} 
+          totalPages={1} 
+          totalItems={tasks.length} 
+          itemsPerPage={Math.max(tasks.length, 1)} 
         />
       </div>
 

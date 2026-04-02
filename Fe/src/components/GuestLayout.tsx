@@ -16,7 +16,7 @@ export function GuestLayout() {
     <div className="min-h-screen bg-surface selection:bg-secondary-container flex flex-col">
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl shadow-[0_20px_40px_rgba(13,28,50,0.05)] flex justify-between items-center px-6 md:px-12 py-6">
-        <Link to="/" className="font-serif text-2xl tracking-tighter font-bold text-primary uppercase">LUXE MONOGRAPH</Link>
+        <Link to="/" className="font-serif text-2xl tracking-tighter font-bold text-primary uppercase">QUẢN TRỊ KHÁCH SẠN</Link>
         <div className="hidden md:flex items-center space-x-12">
           {navLinks.map((link) => (
             <Link
@@ -46,7 +46,7 @@ export function GuestLayout() {
       <footer className="w-full py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 px-6">
           <div className="space-y-6">
-            <div className="font-serif text-lg text-primary uppercase tracking-widest">LUXE MONOGRAPH</div>
+            <div className="font-serif text-lg text-primary uppercase tracking-widest">QUẢN TRỊ KHÁCH SẠN</div>
             <p className="text-xs tracking-[0.1rem] uppercase text-slate-500 leading-relaxed">
               Một bộ sưu tập những thánh đường đẳng cấp thế giới <br/> được thiết kế cho những khách du lịch sành sỏi.
             </p>

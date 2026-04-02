@@ -16,8 +16,19 @@ import { cn } from '../lib/utils';
 import { Badge } from '../components/ui/Badge';
 import { SearchInput } from '../components/ui/SearchInput';
 
+import { getUser, setToken, setUser, clearAuth } from '../lib/auth';
+import { login, register } from '../lib/api';
+
 export function SettingsPage() {
   const [activeTab, setActiveTab] = React.useState('users');
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [fullName, setFullName] = React.useState('');
+  const [phone, setPhone] = React.useState('');
+  const [authMode, setAuthMode] = React.useState<'login' | 'register'>('login');
+  const [authError, setAuthError] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [currentUser, setCurrentUser] = React.useState(() => getUser());
 
   const tabs = [
     { id: 'users', label: 'Người dùng', icon: Users },
@@ -32,6 +43,115 @@ export function SettingsPage() {
       <div>
         <h2 className="text-3xl font-extrabold font-headline tracking-tight text-slate-900">Cài đặt hệ thống</h2>
         <p className="text-slate-500 font-medium mt-1">Quản lý tài khoản, quyền truy cập và cấu hình</p>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+        {currentUser ? (
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xl font-bold">Xin chào, {currentUser.fullName}</p>
+              <p className="text-sm text-slate-500">Vai trò: {currentUser.role}</p>
+            </div>
+            <button
+              onClick={() => {
+                clearAuth();
+                setCurrentUser(null);
+              }}
+              className="px-4 py-2 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600"
+            >
+              Đăng xuất
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="inline-flex bg-slate-100 rounded-xl p-1">
+              <button
+                onClick={() => setAuthMode('login')}
+                className={cn("px-4 py-1.5 rounded-lg text-sm font-bold", authMode === 'login' ? "bg-white shadow-sm text-primary" : "text-slate-500")}
+              >
+                Đăng nhập
+              </button>
+              <button
+                onClick={() => setAuthMode('register')}
+                className={cn("px-4 py-1.5 rounded-lg text-sm font-bold", authMode === 'register' ? "bg-white shadow-sm text-primary" : "text-slate-500")}
+              >
+                Đăng ký khách
+              </button>
+            </div>
+
+            <div className={cn("grid grid-cols-1 gap-4 items-end", authMode === 'register' ? "md:grid-cols-5" : "md:grid-cols-4")}>
+            {authMode === 'register' && (
+              <div className="md:col-span-1">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Họ tên</label>
+                <input
+                  onChange={(e) => setFullName(e.target.value)}
+                  value={fullName}
+                  type="text"
+                  className="w-full mt-1 p-2 border border-slate-200 rounded-lg"
+                  placeholder="Nguyễn Văn A"
+                />
+              </div>
+            )}
+            <div className="md:col-span-1">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Email</label>
+              <input
+                onChange={(e) => setEmail(e.target.value)}
+                value={email}
+                type="email"
+                className="w-full mt-1 p-2 border border-slate-200 rounded-lg"
+                placeholder="admin@hotel.com"
+              />
+            </div>
+            <div className="md:col-span-1">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Mật khẩu</label>
+              <input
+                onChange={(e) => setPassword(e.target.value)}
+                value={password}
+                type="password"
+                className="w-full mt-1 p-2 border border-slate-200 rounded-lg"
+                placeholder="Admin@123"
+              />
+            </div>
+            {authMode === 'register' && (
+              <div className="md:col-span-1">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">SĐT</label>
+                <input
+                  onChange={(e) => setPhone(e.target.value)}
+                  value={phone}
+                  type="text"
+                  className="w-full mt-1 p-2 border border-slate-200 rounded-lg"
+                  placeholder="0901234567"
+                />
+              </div>
+            )}
+            <div className={cn("flex items-center gap-3", authMode === 'register' ? "md:col-span-2" : "md:col-span-2")}>
+              <button
+                onClick={async () => {
+                  setIsLoading(true);
+                  setAuthError('');
+                  try {
+                    const result = authMode === 'login'
+                      ? await login({ email, password })
+                      : await register({ fullName, email, password, phone });
+                    setToken(result.token);
+                    setUser(result.user);
+                    setCurrentUser(result.user);
+                  } catch (error: any) {
+                    setAuthError(error?.message || 'Xác thực thất bại');
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+                className="px-5 py-2 rounded-xl bg-primary text-white font-bold hover:bg-primary-dim"
+              >
+                {isLoading ? 'Đang xử lý...' : authMode === 'login' ? 'Đăng nhập' : 'Đăng ký & đăng nhập'}
+              </button>
+              <span className="text-xs text-slate-500">Demo: admin@hotel.com / Admin@123, hoặc tự đăng ký role Guest</span>
+            </div>
+            </div>
+            {authError && <p className="text-sm text-red-500 md:col-span-4">{authError}</p>}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">

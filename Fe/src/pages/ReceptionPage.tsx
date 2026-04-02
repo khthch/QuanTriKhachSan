@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { 
   UserPlus, 
   Key, 
@@ -16,8 +15,64 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PageHeader } from '../components/dashboard/PageHeader';
+import { checkInBooking, checkOutBooking, getReceptionCheckInInfo, getReceptionEta } from '../lib/api';
 
 export function ReceptionPage() {
+  const [mode, setMode] = React.useState<'checkin' | 'checkout'>('checkin');
+  const [bookingCode, setBookingCode] = React.useState('');
+  const [selectedBooking, setSelectedBooking] = React.useState<any>(null);
+  const [etaList, setEtaList] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const loadEta = React.useCallback(async () => {
+    try {
+      const data = await getReceptionEta();
+      setEtaList(Array.isArray(data) ? data : []);
+    } catch {
+      setEtaList([]);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    loadEta();
+  }, [loadEta]);
+
+  async function handleSearch() {
+    if (!bookingCode.trim()) return;
+    setLoading(true);
+    setError('');
+    try {
+      const data = await getReceptionCheckInInfo(bookingCode.trim());
+      setSelectedBooking(data);
+    } catch (e) {
+      setSelectedBooking(null);
+      setError(e instanceof Error ? e.message : 'Không tìm thấy đặt phòng');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSubmitFlow() {
+    if (!selectedBooking?.id) return;
+    setLoading(true);
+    setError('');
+    try {
+      if (mode === 'checkin') {
+        await checkInBooking(Number(selectedBooking.id));
+      } else {
+        await checkOutBooking(Number(selectedBooking.id));
+      }
+      const refreshed = await getReceptionCheckInInfo(String(selectedBooking.bookingCode));
+      setSelectedBooking(refreshed);
+      loadEta();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Thao tác thất bại');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-10">
       <PageHeader 
@@ -25,8 +80,8 @@ export function ReceptionPage() {
         description="Chào đón khách hàng và quản lý chìa khóa"
         actions={
           <div className="flex bg-slate-100 p-1 rounded-2xl">
-            <button className="px-6 py-2 bg-white shadow-sm rounded-xl text-sm font-bold text-primary">Check-in</button>
-            <button className="px-6 py-2 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors">Check-out</button>
+            <button onClick={() => setMode('checkin')} className={cn("px-6 py-2 rounded-xl text-sm font-bold", mode === 'checkin' ? "bg-white shadow-sm text-primary" : "text-slate-400 hover:text-slate-600 transition-colors")}>Check-in</button>
+            <button onClick={() => setMode('checkout')} className={cn("px-6 py-2 rounded-xl text-sm font-bold", mode === 'checkout' ? "bg-white shadow-sm text-primary" : "text-slate-400 hover:text-slate-600 transition-colors")}>Check-out</button>
           </div>
         }
       />
@@ -50,9 +105,52 @@ export function ReceptionPage() {
               <input 
                 type="text" 
                 placeholder="Ví dụ: BK-9283 hoặc Julianna Smith" 
+                value={bookingCode}
+                onChange={(e) => setBookingCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearch();
+                  }
+                }}
                 className="w-full pl-16 pr-6 py-6 bg-slate-50 border-2 border-slate-100 rounded-2xl text-xl font-bold focus:border-primary focus:ring-0 transition-all placeholder:text-slate-200"
               />
             </div>
+
+            <div className="flex items-center gap-3 mb-8">
+              <button onClick={handleSearch} disabled={loading} className="px-6 py-3 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary-dim disabled:opacity-60">
+                {loading ? 'Đang tìm...' : 'Tìm đặt phòng'}
+              </button>
+              {selectedBooking && (
+                <button onClick={handleSubmitFlow} disabled={loading} className="px-6 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold disabled:opacity-60">
+                  {mode === 'checkin' ? 'Xác nhận Check-in' : 'Xác nhận Check-out'}
+                </button>
+              )}
+            </div>
+
+            {error && <p className="text-sm font-semibold text-red-500 mb-6">{error}</p>}
+
+            {selectedBooking && (
+              <div className="mb-8 p-6 rounded-2xl border border-slate-100 bg-slate-50/60">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-400 font-medium">Mã đặt phòng</p>
+                    <p className="font-bold text-slate-900">{selectedBooking.bookingCode}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-medium">Trạng thái</p>
+                    <p className="font-bold text-slate-900">{selectedBooking.status}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-medium">Khách</p>
+                    <p className="font-bold text-slate-900">{selectedBooking.guestName || selectedBooking.guestEmail || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-medium">Liên hệ</p>
+                    <p className="font-bold text-slate-900">{selectedBooking.guestPhone || selectedBooking.guestEmail || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
@@ -93,29 +191,26 @@ export function ReceptionPage() {
           <div className="bg-white rounded-3xl custom-shadow border border-slate-100 p-8">
             <h3 className="text-lg font-bold font-headline mb-6">Khách sắp đến (ETA)</h3>
             <div className="space-y-6">
-              {[
-                { name: 'Robert Fox', time: '14:20', room: '102', status: 'Sẵn sàng' },
-                { name: 'Jane Cooper', time: '15:00', room: '304', status: 'Đang dọn' },
-                { name: 'Cody Fisher', time: '15:45', room: '201', status: 'Sẵn sàng' },
-              ].map((guest, i) => (
+              {etaList.slice(0, 5).map((guest, i) => (
                 <div key={i} className="flex items-center justify-between group cursor-pointer">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center font-bold text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                      {guest.name.split(' ').map(n => n[0]).join('')}
+                      {(guest.guestName || 'G').split(' ').map((n: string) => n[0]).join('')}
                     </div>
                     <div>
-                      <p className="font-bold text-slate-900 group-hover:text-primary transition-colors">{guest.name}</p>
+                      <p className="font-bold text-slate-900 group-hover:text-primary transition-colors">{guest.guestName || guest.guestEmail || 'Guest'}</p>
                       <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-                        <Clock className="w-3 h-3" /> {guest.time} • Phòng {guest.room}
+                        <Clock className="w-3 h-3" /> {guest.bookingDetails?.[0]?.checkInDate ? new Date(guest.bookingDetails[0].checkInDate).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'} • {guest.bookingCode}
                       </div>
                     </div>
                   </div>
                   <div className={cn(
                     "w-2 h-2 rounded-full",
-                    guest.status === 'Sẵn sàng' ? "bg-emerald-500" : "bg-amber-400"
+                    guest.status === 'Confirmed' ? "bg-emerald-500" : "bg-amber-400"
                   )}></div>
                 </div>
               ))}
+              {etaList.length === 0 && <p className="text-sm text-slate-400">Chưa có khách sắp đến trong 24h tới.</p>}
             </div>
             <button className="w-full mt-8 py-3 text-sm font-bold text-primary hover:bg-primary/5 rounded-xl transition-colors flex items-center justify-center gap-2">
               Xem tất cả <ChevronRight className="w-4 h-4" />

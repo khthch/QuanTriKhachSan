@@ -2,14 +2,18 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Bed, Calendar, Monitor, Brush, Settings, HelpCircle, Plus, LayoutGrid } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { getUser } from '../lib/auth';
 
 export function Sidebar() {
+  const user = getUser();
+  const role = user?.role;
+
   const navItems = [
-    { icon: Bed, label: 'Trạng thái Phòng', to: '/dashboard/status' },
-    { icon: Calendar, label: 'Đơn đặt phòng', to: '/dashboard/bookings' },
-    { icon: Monitor, label: 'Lễ tân', to: '/dashboard/reception' },
-    { icon: Brush, label: 'Buồng phòng', to: '/dashboard/housekeeping' },
-  ];
+    { icon: Bed, label: 'Trạng thái Phòng', to: '/dashboard/status', roles: ['Admin', 'Reception', 'Housekeeping'] },
+    { icon: Calendar, label: 'Đơn đặt phòng', to: '/dashboard/bookings', roles: ['Admin', 'Reception', 'Guest'] },
+    { icon: Monitor, label: 'Lễ tân', to: '/dashboard/reception', roles: ['Admin', 'Reception'] },
+    { icon: Brush, label: 'Buồng phòng', to: '/dashboard/housekeeping', roles: ['Admin', 'Housekeeping'] },
+  ].filter((item) => role && item.roles.includes(role));
 
   return (
     <aside className="w-64 fixed h-full bg-white border-r border-slate-200 flex flex-col z-50">
