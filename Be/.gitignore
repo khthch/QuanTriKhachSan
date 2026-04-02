@@ -43,3 +43,5 @@ appsettings.Local.json
 
 # EF Core local scripts
 *.sql
+appsettings*.json
+!appsettings.Example.json
